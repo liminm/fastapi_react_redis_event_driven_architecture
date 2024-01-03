@@ -3,13 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from redis_om import get_redis_connection, HashModel
 import json
 
-import consumers
+import backend.consumers as consumers
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=['http://localhost:3000'],
+    allow_credentials=True,
     allow_methods=['*'],
     allow_headers=['*']
 )
@@ -52,8 +53,8 @@ async def get_state(pk: str):
 
 
 def build_state(pk: str):
-    # pks = Event.all_pks()
-    pks = ['01HJHV9S8SNZWNF03A67YYY4VQ', '01HJHVY75JF1Y4N9QVPV2MCZH0', '01HJHVYB679RN9RJE6DKTY7KRP', '01HJHW0CPE36AVC6730ZJJSDVA', ]
+    pks = Event.all_pks()
+    # pks = ['01HJHV9S8SNZWNF03A67YYY4VQ', '01HJHVY75JF1Y4N9QVPV2MCZH0', '01HJHVYB679RN9RJE6DKTY7KRP', '01HJHW0CPE36AVC6730ZJJSDVA', ]
     all_events = [Event.get(pk) for pk in pks]
     events = [event for event in all_events if event.delivery_id == pk]
     state = {}
@@ -68,7 +69,9 @@ def build_state(pk: str):
 @app.post('/deliveries/create')
 async def create(request: Request):
     body = await request.json()
-    delivery = Delivery(budget=body['data']['budget'], notes=body['data']['notes']).save()
+    delivery = Delivery(budget=int(body['data']['budget']), notes=body['data']['notes']).save()
+    # delivery = Delivery(budget=int(body['data']['budget']), notes=body['data']['notes']).save()
+
     event = Event(delivery_id=delivery.pk, type=body['type'], data=json.dumps(body['data'])).save()
     state = consumers.CONSUMERS[event.type]({}, event)
     redis.set(f'delivery:{delivery.pk}', json.dumps(state))
@@ -78,6 +81,8 @@ async def create(request: Request):
 @app.post('/event')
 async def dispatch(request: Request):
     body = await request.json()
+        
+
     delivery_id = body['delivery_id']
     event = Event(delivery_id=delivery_id, type=body['type'], data=json.dumps(body['data'])).save()
     state = await get_state(delivery_id)

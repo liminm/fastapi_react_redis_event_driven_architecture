@@ -43,7 +43,6 @@ def deliver_products(state,event):
     if new_quantity < 0:
         raise HTTPException(status_code=400,detail="Not enough quantity")
 
-
     return state | {
         "budget": new_budget,
         "purchase_price": int(data['sell_price']),
