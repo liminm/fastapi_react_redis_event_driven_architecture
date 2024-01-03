@@ -54,7 +54,6 @@ async def get_state(pk: str):
 
 def build_state(pk: str):
     pks = Event.all_pks()
-    # pks = ['01HJHV9S8SNZWNF03A67YYY4VQ', '01HJHVY75JF1Y4N9QVPV2MCZH0', '01HJHVYB679RN9RJE6DKTY7KRP', '01HJHW0CPE36AVC6730ZJJSDVA', ]
     all_events = [Event.get(pk) for pk in pks]
     events = [event for event in all_events if event.delivery_id == pk]
     state = {}
@@ -70,7 +69,6 @@ def build_state(pk: str):
 async def create(request: Request):
     body = await request.json()
     delivery = Delivery(budget=int(body['data']['budget']), notes=body['data']['notes']).save()
-    # delivery = Delivery(budget=int(body['data']['budget']), notes=body['data']['notes']).save()
 
     event = Event(delivery_id=delivery.pk, type=body['type'], data=json.dumps(body['data'])).save()
     state = consumers.CONSUMERS[event.type]({}, event)
@@ -86,7 +84,6 @@ async def dispatch(request: Request):
     delivery_id = body['delivery_id']
     event = Event(delivery_id=delivery_id, type=body['type'], data=json.dumps(body['data'])).save()
     state = await get_state(delivery_id)
-    # state['status'] = 'active'
     new_state = consumers.CONSUMERS[event.type](state,event)
     redis.set(f'delivery:{delivery_id}',json.dumps(new_state))
     return new_state
